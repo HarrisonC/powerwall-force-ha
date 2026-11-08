@@ -1,7 +1,7 @@
 {
   "domain": "powerwall_force",
   "name": "Powerwall Force",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "config_flow": true,
   "dependencies": ["application_credentials"],
   "documentation": "https://github.com/HarrisonC/powerwall-force-ha",
