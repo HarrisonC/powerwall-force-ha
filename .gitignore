@@ -1,0 +1,12 @@
+.venv/
+.tools/
+.DS_Store
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+*.pem
+*.der
+*.key
+dist/
+

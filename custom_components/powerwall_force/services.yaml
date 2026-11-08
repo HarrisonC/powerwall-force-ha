@@ -1,0 +1,67 @@
+charge:
+  name: Force charge
+  description: Charge for a time period using local battery dispatch. A new action replaces the current session.
+  fields:
+    config_entry_id:
+      name: Powerwall integration
+      description: Optional when only one Powerwall Force integration is configured.
+      selector:
+        config_entry:
+          integration: powerwall_force
+    duration:
+      name: Duration
+      description: Between 1 second and 24 hours.
+      required: true
+      example: "00:30:00"
+      selector:
+        duration:
+    power_w:
+      name: Power
+      description: Positive watts. Omit for the configured maximum charge power. Must not exceed that maximum.
+      example: 2500
+      selector:
+        number:
+          min: 1
+          max: 1000000
+          step: 1
+          unit_of_measurement: W
+          mode: box
+discharge:
+  name: Force discharge
+  description: Discharge for a time period using local battery dispatch. May export to the grid and bypass backup reserve.
+  fields:
+    config_entry_id:
+      name: Powerwall integration
+      description: Optional when only one Powerwall Force integration is configured.
+      selector:
+        config_entry:
+          integration: powerwall_force
+    duration:
+      name: Duration
+      description: Between 1 second and 24 hours.
+      required: true
+      example: "00:30:00"
+      selector:
+        duration:
+    power_w:
+      name: Power
+      description: Positive watts. Omit for the configured maximum discharge power. Must not exceed that maximum.
+      example: 2500
+      selector:
+        number:
+          min: 1
+          max: 1000000
+          step: 1
+          unit_of_measurement: W
+          mode: box
+stop:
+  name: Stop force charging or discharging
+  description: Release battery dispatch and resume the Powerwall's configured operating mode.
+  fields:
+    config_entry_id:
+      name: Powerwall integration
+      description: Optional when only one Powerwall Force integration is configured.
+      selector:
+        config_entry:
+          integration: powerwall_force
+

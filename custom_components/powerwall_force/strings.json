@@ -1,0 +1,175 @@
+{
+  "title": "Powerwall Force",
+  "options": {
+    "step": {
+      "init": {
+        "title": "Telemetry polling",
+        "description": "Choose how often to update the local Powerwall readings. Changes apply immediately while an active charge or discharge continues.",
+        "data": {
+          "poll_interval_seconds": "Polling interval (seconds)"
+        },
+        "data_description": {
+          "poll_interval_seconds": "Default: 2 seconds. Enter a whole number from 1 to 300. All readings share one request per update."
+        }
+      }
+    },
+    "error": {
+      "invalid_poll_interval": "Enter a whole number from 1 to 300 seconds."
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Powerwall Force",
+        "description": "Pair your Powerwall 3 in Home Assistant, or use an existing registered key.",
+        "menu_options": {
+          "pair_gateway": "Pair a Powerwall",
+          "existing_key": "Use an existing paired key"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Powerwall Force",
+        "description": "Update the connection, registered RSA key, or installation power limits. Active dispatch stops when this entry reloads.",
+        "data": {
+          "host": "Gateway IP address or hostname",
+          "password": "Customer password (last 5 characters of gateway QR password)",
+          "private_key_path": "Path to paired RSA-4096 private key",
+          "max_charge_power_w": "Maximum charge power accepted by your installation (W)",
+          "max_discharge_power_w": "Maximum discharge power accepted by your installation (W)"
+        },
+        "data_description": {
+          "max_charge_power_w": "Used when a charge action omits power_w. Enter a value accepted by local dispatch.",
+          "max_discharge_power_w": "Used when a discharge action omits power_w. Some Powerwall 3 firmware accepts at most 10000 W for this command even when the electrical rating is higher. Use a tested value."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect your Powerwall",
+        "description": "Check that the gateway is reachable and accepts your registered key. Imported legacy keys may also require the customer password. This must be the original gateway. If the key has been revoked, register it again before reconnecting.",
+        "data": {
+          "host": "Gateway IP address or hostname",
+          "password": "Customer password (last 5 characters of gateway QR password)",
+          "private_key_path": "Path to paired RSA-4096 private key",
+          "max_charge_power_w": "Maximum charge power accepted by your installation (W)",
+          "max_discharge_power_w": "Maximum discharge power accepted by your installation (W)"
+        },
+        "data_description": {
+          "max_charge_power_w": "Used when a charge action omits power_w. Enter a value accepted by local dispatch.",
+          "max_discharge_power_w": "Used when a discharge action omits power_w. Some Powerwall 3 firmware accepts at most 10000 W for this command even when the electrical rating is higher. Use a tested value."
+        }
+      },
+      "existing_key": {
+        "title": "Connect your Powerwall 3",
+        "description": "Connect to your Powerwall 3 over your home LAN. Pair an RSA key first using the README instructions, then place the private key on Home Assistant. Direct dispatch can bypass backup reserve and grid export settings. Power values are battery setpoints; configure limits supported by your installation.",
+        "data": {
+          "host": "Gateway IP address or hostname",
+          "password": "Customer password (last 5 characters of gateway QR password)",
+          "private_key_path": "Path to paired RSA-4096 private key",
+          "max_charge_power_w": "Maximum charge power accepted by your installation (W)",
+          "max_discharge_power_w": "Maximum discharge power accepted by your installation (W)"
+        },
+        "data_description": {
+          "max_charge_power_w": "Used when a charge action omits power_w. Enter a value accepted by local dispatch.",
+          "max_discharge_power_w": "Used when a discharge action omits power_w. Some Powerwall 3 firmware accepts at most 10000 W for this command even when the electrical rating is higher. Use a tested value."
+        }
+      },
+      "pair_gateway": {
+        "title": "Connect your Powerwall 3",
+        "description": "Enter the gateway address on your home network and its accepted battery power limits. Direct dispatch can bypass backup reserve and grid export settings.",
+        "data": {
+          "host": "Powerwall LAN IP address or hostname",
+          "region": "Tesla account region",
+          "max_charge_power_w": "Maximum charge power (W)",
+          "max_discharge_power_w": "Maximum discharge power (W)"
+        },
+        "data_description": {
+          "max_charge_power_w": "Used when a charge action omits power_w. Enter a value accepted by local dispatch.",
+          "max_discharge_power_w": "Used when a discharge action omits power_w. Some Powerwall 3 firmware accepts at most 10000 W for this command even when the electrical rating is higher. Use a tested value."
+        }
+      },
+      "authorization": {
+        "title": "Authorize pairing",
+        "description": "Sign in on Tesla’s website using a registered developer application, or reuse an existing Tesla Fleet connection. Account authorization is needed only during pairing.",
+        "menu_options": {
+          "tesla_login": "Sign in with Tesla (developer app credentials)",
+          "tesla_fleet": "Use my Tesla Fleet connection"
+        }
+      },
+      "tesla_fleet": {
+        "title": "Choose Tesla Fleet connection",
+        "description": "Use this connection’s authorization to list your energy sites and register the local key. Local operation will not depend on Tesla Fleet after pairing.",
+        "data": {
+          "entry_id": "Tesla Fleet connection"
+        }
+      },
+      "application_credentials": {
+        "title": "Tesla developer application",
+        "description": "Tesla sign-in requires an approved application. Enter its client ID and secret, with energy information and energy settings permissions enabled. Register Home Assistant’s OAuth redirect URL in that app. These are developer app credentials, not your Tesla account password. See the README for setup details; an existing Tesla Fleet connection avoids configuring another app.",
+        "data": {
+          "client_id": "Tesla application client ID",
+          "client_secret": "Tesla application client secret"
+        }
+      },
+      "pick_implementation": {
+        "title": "Tesla sign-in application",
+        "data": {
+          "implementation": "Application"
+        }
+      },
+      "auth": {
+        "title": "Sign in with Tesla"
+      },
+      "select_site": {
+        "title": "Choose your Powerwall site",
+        "description": "Choose the site belonging to the Powerwall at the IP address you entered. The gateway must accept a signed local request before setup can finish.",
+        "data": {
+          "site_id": "Energy site"
+        }
+      },
+      "register_key": {
+        "title": "Register local control key",
+        "description": "Ready to pair {name} ({din}). Select Submit to generate a private key on this Home Assistant instance and register its public key with Tesla. The next step requires the Powerwall DC isolator. Keep this wizard open."
+      },
+      "isolator": {
+        "title": "Confirm pairing on your Powerwall",
+        "description": "The key for {name} ({din}) has been registered. Following Tesla’s instructions for your unit, turn the Powerwall DC isolator OFF, wait 10 seconds, then turn it ON. Do this after registering the key and within 10 minutes. Once it is back ON, select Submit. The gateway may need time to become reachable again; verification sends read-only requests."
+      },
+      "pairing_retry": {
+        "title": "Pairing has not completed",
+        "description": "Check that the selected site matches the IP address and that the DC isolator was turned OFF for 10 seconds and back ON after key registration. Select Submit to retry using the same private key. If Tesla authorization expired, sign in again."
+      }
+    },
+    "error": {
+      "invalid_host": "Enter an IP address or hostname without a scheme, port, or path.",
+      "invalid_key": "Cannot read an unencrypted RSA-4096 PEM private key at this path.",
+      "invalid_auth": "The gateway rejected the password or RSA key. Verify that the key is registered and verified.",
+      "cannot_connect": "Cannot communicate with the gateway or read its signed config response. Check the address, LAN access, and firmware support.",
+      "invalid_power": "Enter a positive, finite maximum in watts for this installation.",
+      "registration_failed": "Could not register the key. Check Tesla energy permissions and connectivity, then retry.",
+      "pairing_timeout": "The verification window expired. Register the same key again, then repeat the isolator step.",
+      "pairing_failed": "Pairing could not be verified.",
+      "cloud_auth_failed": "Tesla authorization expired or lacks the required energy permissions.",
+      "cloud_unavailable": "Cannot reach Tesla’s pairing API. Check connectivity or sign in again."
+    },
+    "abort": {
+      "already_configured": "This Powerwall is already configured.",
+      "wrong_gateway": "The new connection identifies a different gateway.",
+      "reauth_successful": "Connection updated.",
+      "reconfigure_successful": "Configuration updated.",
+      "cloud_auth_failed": "Tesla rejected the authorization. Enable energy product information and energy settings permissions, then sign in again.",
+      "cloud_unavailable": "Cannot communicate with Tesla’s pairing API.",
+      "no_energy_sites": "No Powerwall site with a gateway identity was returned for this Tesla account.",
+      "missing_credentials": "Add Tesla developer application credentials or use an existing Tesla Fleet connection.",
+      "missing_configuration": "No Tesla sign-in application is configured.",
+      "authorize_url_timeout": "Tesla sign-in timed out.",
+      "oauth_timeout": "Tesla sign-in timed out.",
+      "oauth_unauthorized": "Tesla rejected the sign-in.",
+      "oauth_failed": "Tesla sign-in failed.",
+      "oauth_error": "Tesla returned an invalid authorization response.",
+      "user_rejected_authorize": "Tesla sign-in was cancelled.",
+      "no_url_available": "Home Assistant needs an accessible callback URL for Tesla sign-in."
+    },
+    "progress": {
+      "verify_pairing": "Waiting for the gateway to come back online and accept the registered RSA key locally…"
+    }
+  }
+}
