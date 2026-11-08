@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import struct
 import time
 import uuid
@@ -40,6 +41,26 @@ class CommandRejected(PowerwallError):
         hint = " (command unsupported by this firmware)" if status_code == 12 else ""
         message = f"Gateway rejected command: status {status_code}{hint}"
         super().__init__(f"{message}: {detail}" if detail else message)
+
+    def lower_power_limit(self, watts: float) -> float | None:
+        """Read an explicit lower limit for the exact command that was rejected."""
+        if self.status_code != 11:
+            return None
+        number = r"[+-]?\d+(?:\.\d+)?"
+        match = re.fullmatch(
+            rf"power ({number}) exceeds (charge|discharge) limit ({number})", self.detail
+        )
+        if match is None:
+            return None
+        rejected, direction, limit = match.groups()
+        limit_w = float(limit)
+        if not math.isclose(float(rejected), watts, rel_tol=0, abs_tol=1e-6):
+            return None
+        if direction == "charge" and watts < limit_w < 0:
+            return limit_w
+        if direction == "discharge" and 0 < limit_w < watts:
+            return limit_w
+        return None
 
 
 def varint(value: int) -> bytes:

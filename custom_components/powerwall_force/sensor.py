@@ -106,8 +106,11 @@ class DispatchStatus(PowerwallEntity, SensorEntity):
         controller = self._controller
         return {
             "requested_power_w": controller.power_w,
+            "dispatch_power_w": controller.dispatch_power_w,
             "ends_at": controller.ends_at.isoformat() if controller.ends_at else None,
             "last_error": controller.last_error,
+            "restore_status": controller.restore_status,
+            "restore_error": controller.restore_error,
             "config_entry_id": self._entry.entry_id,
             "max_charge_power_w": controller.max_charge,
             "max_discharge_power_w": controller.max_discharge,

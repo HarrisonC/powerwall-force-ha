@@ -38,17 +38,15 @@ some PW3 firmware, even where the electrical rating is higher. Ratings and
 accepted dispatch setpoints are distinct. Multi-unit aggregate behavior has not
 been validated here; limits apply to the targeted gateway's dispatch command.
 
-A reported setup maximum of **11,000 W** caused discharge requests without
-`power_w` to fail with gateway status **11**, while specifying power explicitly
-worked. An omitted value sends exactly the configured maximum; it does not ask
-the gateway to choose a maximum automatically. If 10,000 W is accepted on your
-installation, set **Maximum discharge power** to 10,000 W under **Reconfigure**.
-Otherwise use a lower, successfully tested value. The integration does not
-silently reduce a rejected request or impose a universal 10,000 W cap.
-
-Rejection messages retain the gateway's explanation, when supplied, and status
-11 errors identify the requested wattage and whether it came from the setup
-maximum. The same explanation appears in the dispatch status's `last_error`.
+When a status **11** response identifies the exact rejected wattage and a lower
+limit for that direction, the integration confirms resume and retries once at
+that limit within the original session window. Later commands use the learned
+charge or discharge ceiling until the integration reloads. `requested_power_w`
+shows the requested setpoint and `dispatch_power_w` shows the setpoint sent to
+the gateway after applying that ceiling. Other status 11 responses keep the
+gateway's explanation in `last_error`. Set an accepted maximum under
+**Reconfigure** if the gateway rejects your configured maximum without reporting
+a usable limit.
 
 ## Direct dispatch behavior
 
@@ -311,8 +309,11 @@ also exposes the ID as an attribute. Omitting it is allowed only when exactly
 one Powerwall Force entry exists.
 
 The sensor state is `idle`, `charge`, `discharge`, or `error`. Attributes include
-`requested_power_w` (negative for charging), `ends_at` (UTC), installation limits,
-and `last_error`. It reports command state, not live battery telemetry.
+the requested and dispatched watts (negative for charging), `ends_at` (UTC),
+installation limits, `last_error`, `restore_status`, and `restore_error`.
+An interrupted session retains `error` and its cause even when the gateway
+acknowledges resume. `restore_status` is `pending` while resume is unconfirmed
+and `confirmed` after acknowledgement. Battery power shows the measured result.
 
 ## Session expiry and restarts
 
@@ -325,9 +326,11 @@ configured operating mode.
 
 If Home Assistant crashes, loses network access, or renewal fails, the last
 accepted lease expires on the gateway after at most 30 seconds from acceptance.
-A failed renewal ends the session and attempts a release; it is not silently
-restarted. If release fails, the status is `error` and the last lease is left
-to expire. Sessions are deliberately not restored after a Home Assistant restart.
+A timeout ends the session and triggers a resume request. Failed resume attempts
+are retried up to twice, 10 seconds apart. New dispatches are blocked while
+resume is pending. If retries are exhausted, **Stop** tries again. Before sending
+power, the integration records that a resume may be needed. After a restart it
+uses that record to resume normal operation without replaying the timed session.
 This behavior depends on the gateway implementing its dispatch expiry as
 documented upstream; hardware verification is still required.
 

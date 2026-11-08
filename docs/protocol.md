@@ -58,7 +58,8 @@ Renewal starts 15 seconds after the previous request started and has up to 12
 seconds to complete. The deadline includes any signing or bearer login and is
 capped at the previous lease's earliest possible expiry and the session end.
 Timing from request start accounts for time spent waiting for acknowledgement.
-A renewal failure ends the session and triggers a release attempt.
+A transport failure ends the session and triggers a resume request. Timeout
+messages identify the phase that was running when the deadline expired.
 
 The `RoutableMessage` uses domain 7, inner message field 10, signature field 13,
 and UUID field 51. The RSA metadata covers signature type, energy-device domain,
@@ -93,11 +94,10 @@ handlers, so their validation, locking, and gateway expiry behavior match
 automation calls. Manual settings are stored in config-entry options, separately
 from the installation maxima that default automation requests use.
 
-Status 11 rejections include the attempted wattage and its source. The decoder
-retains the gateway's status message for diagnostics; the integration does not
-infer a universal discharge limit from this code or silently retry at a lower
-wattage. The 11,000 W user report is consistent with upstream's observed 10,000 W
-dispatch limit, and remains distinct from an inverter's advertised rating.
+Status 11 rejections retain the gateway's status message. When it identifies
+the exact rejected setpoint, direction, and a strictly lower limit, the controller
+learns that directional ceiling and permits one retry after an acknowledged
+resume, within the original deadline. Other rejections surface as errors.
 
 Only the protobuf wire
 types needed for these messages are implemented. The decoder rejects malformed

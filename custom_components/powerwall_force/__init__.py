@@ -18,6 +18,7 @@ from homeassistant.exceptions import (
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.storage import Store
 
 from .client import LocalPowerwall, load_private_key
 from .const import (
@@ -140,7 +141,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data[CONF_MAX_DISCHARGE_POWER],
         hass.async_create_background_task,
         lambda: async_dispatcher_send(hass, update_signal(entry.entry_id)),
+        Store(hass, 1, f"{DOMAIN}.dispatch.{entry.entry_id}", atomic_writes=True),
     )
+    await controller.async_recover()
     telemetry = TelemetryCoordinator(hass, entry, client)
     entry.runtime_data = PowerwallRuntime(controller, telemetry)
 

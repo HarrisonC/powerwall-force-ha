@@ -123,14 +123,15 @@ async def test_bad_login_does_not_dispatch(aiohttp_server, rsa_key):
 async def test_entire_renewal_has_one_deadline(rsa_key, monkeypatch):
     monkeypatch.setattr(client_module, "REQUEST_TIMEOUT", 0.01)
 
-    async def slow_send(payload, *, time_budget):
+    async def slow_send(payload, *, time_budget, report_phase):
+        report_phase("waiting for the gateway response")
         await asyncio.sleep(1)
 
     async with ClientSession() as session:
         client = LocalPowerwall(session, "gateway", "abcde", rsa_key)
         client.din = "DIN"
         client._send = AsyncMock(side_effect=slow_send)
-        with pytest.raises(PowerwallError, match="timed out"):
+        with pytest.raises(PowerwallError, match="timed out.*waiting for the gateway response"):
             await client.async_dispatch(1000, 30)
         client._send.assert_awaited_once()
 
@@ -195,7 +196,7 @@ async def test_telemetry_uses_existing_rsa_connection_only(
 async def test_battery_commands_preempt_a_slow_read(rsa_key, action):
     reading, cancelled = asyncio.Event(), asyncio.Event()
 
-    async def send(payload, *, time_budget=None):
+    async def send(payload, *, time_budget=None, report_phase=None):
         if 16 in fields(payload):
             reading.set()
             try:
@@ -221,7 +222,7 @@ async def test_battery_commands_preempt_a_slow_read(rsa_key, action):
 async def test_telemetry_defers_to_a_command_already_in_flight(rsa_key):
     started, finish = asyncio.Event(), asyncio.Event()
 
-    async def send(payload, *, time_budget=None):
+    async def send(payload, *, time_budget=None, report_phase=None):
         started.set()
         await finish.wait()
         return blob(10, blob(5, blob(38, b"")))
