@@ -8,6 +8,7 @@ import ipaddress
 import json
 import logging
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 import aiohttp
@@ -123,40 +124,41 @@ class LocalPowerwall:
             raise AuthenticationError("Gateway returned no login token") from err
         self._token = token
 
-    async def _send(self, payload: bytes, *, time_budget: float | None = None) -> bytes:
-        if self._password is None:
-            # Pairing supplies the DIN; v1r authenticates the RSA signature itself.
-            signed = await asyncio.get_running_loop().run_in_executor(
-                None, signed_request, payload, self.din, self._key
-            )
-            return await self._request(
-                "POST",
-                "/tedapi/v1r",
-                time_budget=time_budget,
-                data=signed,
-                headers={"Content-Type": "application/octet-stream"},
-            )
-        for attempt in range(2):
-            if self._token is None:
-                await self._login()
+    async def _send(
+        self,
+        payload: bytes,
+        *,
+        time_budget: float | None = None,
+        report_phase: Callable[[str], None] | None = None,
+    ) -> bytes:
+        attempts = 1 if self._password is None else 2
+        for attempt in range(attempts):
+            headers = {"Content-Type": "application/octet-stream"}
+            if self._password is not None:
+                if self._token is None:
+                    if report_phase:
+                        report_phase("refreshing the gateway login")
+                    await self._login()
+                headers["Authorization"] = f"Bearer {self._token}"
             # Re-sign after login; signatures are valid for only 12 seconds.
+            if report_phase:
+                report_phase("signing the request")
             signed = await asyncio.get_running_loop().run_in_executor(
                 None, signed_request, payload, self.din, self._key
             )
+            if report_phase:
+                report_phase("waiting for the gateway response")
             try:
                 return await self._request(
                     "POST",
                     "/tedapi/v1r",
                     time_budget=time_budget,
                     data=signed,
-                    headers={
-                        "Content-Type": "application/octet-stream",
-                        "Authorization": f"Bearer {self._token}",
-                    },
+                    headers=headers,
                 )
             except AuthenticationError:
                 self._token = None
-                if attempt:
+                if attempt + 1 == attempts:
                     raise
         raise AssertionError("Unreachable")
 
@@ -190,6 +192,12 @@ class LocalPowerwall:
     ) -> None:
         self.cancel_telemetry()
         time_budget = REQUEST_TIMEOUT if time_budget is None else time_budget
+        phase = "waiting for the client lock"
+
+        def report_phase(value: str) -> None:
+            nonlocal phase
+            phase = value
+
         try:
             # The controller bounds renewals by the previous lease and the session end.
             # This deadline includes any lock wait, signing and bearer login.
@@ -197,10 +205,12 @@ class LocalPowerwall:
                 if not self.din:
                     raise PowerwallError("Gateway has not been connected")
                 payload = dispatch_request(self.din, watts, seconds)
-                require_dispatch_ack(await self._send(payload, time_budget=time_budget))
+                require_dispatch_ack(
+                    await self._send(payload, time_budget=time_budget, report_phase=report_phase)
+                )
         except TimeoutError as err:
             raise PowerwallError(
-                f"Powerwall dispatch timed out after {time_budget:g} seconds"
+                f"Powerwall dispatch timed out after {time_budget:g} seconds ({phase})"
             ) from err
 
     async def async_resume(self) -> None:

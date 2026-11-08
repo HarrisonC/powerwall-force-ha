@@ -1,9 +1,10 @@
 """Exercise timing, replacement, failures, limits, stop, and shutdown."""
 
 import asyncio
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, call
 
 import pytest
+from homeassistant.helpers.storage import Store
 
 from custom_components.powerwall_force import controller as module
 from custom_components.powerwall_force.controller import DispatchController
@@ -11,10 +12,15 @@ from custom_components.powerwall_force.protocol import CommandRejected, Powerwal
 
 
 @pytest.fixture
-async def control():
+async def control(hass):
     client = AsyncMock()
     instance = DispatchController(
-        client, 5000, 10000, lambda coro, name: asyncio.create_task(coro, name=name), lambda: None
+        client,
+        5000,
+        10000,
+        lambda coro, name: asyncio.create_task(coro, name=name),
+        lambda: None,
+        Store(hass, 1, "dispatch_test", atomic_writes=True),
     )
     yield instance
     await instance.async_stop(close=True)
@@ -63,9 +69,88 @@ async def test_failed_renewal_does_not_retry(control, monkeypatch):
     await asyncio.wait_for(control._task, timeout=1)
     assert control.mode == "error"
     assert control.last_error == "Network lost"
+    assert control.restore_status == "confirmed"
+    assert control.restore_error is None
     assert control.client.async_dispatch.await_count == 2
     assert control.client.async_dispatch.await_args.kwargs["time_budget"] == module.RENEW_TIMEOUT
     control.client.async_resume.assert_awaited_once()
+
+
+async def test_failed_renewal_retries_only_resume_and_preserves_failure(control, monkeypatch):
+    monkeypatch.setattr(module, "RENEW_SECONDS", 0.01)
+    monkeypatch.setattr(module, "RESTORE_INTERVAL", 0.05)
+    control.client.async_dispatch.side_effect = [None, PowerwallError("Renewal timed out")]
+    control.client.async_resume.side_effect = [PowerwallError("Offline"), None]
+    await control.async_start("charge", 300, 1000)
+    await asyncio.wait_for(control._task, 1)
+    assert control.restore_status == "pending"
+    assert control.restore_error == "Offline"
+    assert await control._store.async_load() is True
+    with pytest.raises(PowerwallError, match="resume is still pending"):
+        await control.async_start("discharge", 300, 2000)
+    await asyncio.wait_for(control._recovery_task, 1)
+    assert control.restore_status == "confirmed"
+    assert control.restore_error is None
+    assert control.mode == "error"
+    assert control.last_error == "Renewal timed out"
+    assert control.client.async_dispatch.await_count == 2
+    assert control.client.async_resume.await_count == 2
+    assert await control._store.async_load() is False
+
+
+async def test_manual_stop_retries_resume_and_clears_status(control, monkeypatch):
+    monkeypatch.setattr(module, "RESTORE_INTERVAL", 0.01)
+    control.client.async_resume.side_effect = PowerwallError("Offline")
+    await control.async_start("charge", 300, 1000)
+    with pytest.raises(PowerwallError, match="Offline"):
+        await control.async_stop()
+    await asyncio.wait_for(control._recovery_task, 1)
+    assert control.client.async_resume.await_count == module.RESTORE_ATTEMPTS
+    assert control.restore_status == "pending"
+    assert await control._store.async_load() is True
+
+    control.client.async_resume.side_effect = None
+    await control.async_stop()
+    await control.async_start("charge", 300, 1000)
+    assert control.mode == "charge"
+    assert control.restore_status is None
+    assert control.client.async_resume.await_count == module.RESTORE_ATTEMPTS + 1
+
+
+async def test_missing_recovery_record_prevents_new_dispatch(control, monkeypatch):
+    monkeypatch.setattr(control._store, "async_save", AsyncMock())
+    with pytest.raises(PowerwallError, match="Could not save the dispatch recovery record"):
+        await control.async_start("charge", 300, 1000)
+    control.client.async_dispatch.assert_not_awaited()
+    control.client.async_resume.assert_not_awaited()
+
+
+async def test_cancelled_stop_cannot_clear_the_next_dispatch_record(control, monkeypatch):
+    clearing = asyncio.Event()
+    finish_write = asyncio.Event()
+    write_data = control._store._async_write_data
+
+    async def slow_clear(path, data):
+        if data["data"] is False:
+            clearing.set()
+            await finish_write.wait()
+        await write_data(path, data)
+
+    monkeypatch.setattr(control._store, "_async_write_data", slow_clear)
+    await control.async_start("charge", 300, 1000)
+    stop = asyncio.create_task(control.async_stop())
+    await asyncio.wait_for(clearing.wait(), 1)
+    stop.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await stop
+
+    start = asyncio.create_task(control.async_start("discharge", 300, 2000))
+    await asyncio.sleep(0)
+    assert control.client.async_dispatch.await_count == 1
+    finish_write.set()
+    await asyncio.wait_for(start, 1)
+    assert await control._store.async_load() is True
+    assert control.mode == "discharge"
 
 
 async def test_late_ack_does_not_allow_renewing_past_possible_lease_expiry(control, monkeypatch):
@@ -144,3 +229,33 @@ async def test_rejected_configured_discharge_maximum_is_explained(control):
     await control.async_start("discharge", 60, 9000)
     control.client.async_dispatch.assert_awaited_with(9000, 30)
     assert control.mode == "discharge"
+
+
+@pytest.mark.parametrize(
+    ("mode", "watts", "limit"), [("charge", -5000, -4000), ("discharge", 10000, 9000)]
+)
+async def test_reported_limit_retries_once_after_confirmed_resume(control, mode, watts, limit):
+    failure = CommandRejected(11, f"power {watts} exceeds {mode} limit {limit}")
+    control.client.async_dispatch.side_effect = [failure, None, None]
+    await control.async_start(mode, 60, abs(watts))
+    assert control.client.mock_calls[:2] == [call.async_dispatch(watts, 30), call.async_resume()]
+    assert control.client.async_dispatch.await_args.args == (limit, 30)
+    assert control.power_w == watts
+    assert control.dispatch_power_w == limit
+    assert control.restore_status is None
+    await control.async_start(mode, 60, abs(watts))
+    control.client.async_dispatch.assert_awaited_with(limit, 30)
+
+
+async def test_limit_rejection_without_resume_ack_does_not_retry_power(control, monkeypatch):
+    monkeypatch.setattr(module, "RESTORE_INTERVAL", 0.01)
+    control.client.async_dispatch.side_effect = CommandRejected(
+        11, "power 10000 exceeds discharge limit 9000"
+    )
+    control.client.async_resume.side_effect = [PowerwallError("Offline"), None]
+    with pytest.raises(PowerwallError, match="status 11"):
+        await control.async_start("discharge", 60, 10000)
+    await asyncio.wait_for(control._recovery_task, 1)
+    control.client.async_dispatch.assert_awaited_once_with(10000, 30)
+    assert control.restore_status == "confirmed"
+    assert control.mode == "error"

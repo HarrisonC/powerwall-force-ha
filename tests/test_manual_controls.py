@@ -102,6 +102,7 @@ async def test_button_rejection_updates_status_and_returns_error(hass, loaded):
         await press(hass, DISCHARGE)
     assert hass.states.get(STATUS).state == "error"
     assert "Power outside allowed range" in hass.states.get(STATUS).attributes["last_error"]
+    assert hass.states.get(STATUS).attributes["restore_status"] == "confirmed"
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,6 @@
 """Use real HA config flows, action schemas, and status entities."""
 
+import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -160,6 +161,26 @@ async def test_services_select_entry_and_propagate_rejection(hass):
         )
     entries[0].runtime_data.controller.async_start.assert_awaited_once_with("discharge", 120, 1200)
     entries[1].runtime_data.controller.async_start.assert_not_awaited()
+
+
+async def test_setup_releases_saved_dispatch_without_replaying_power(hass, loaded):
+    entry, dispatch, resume = loaded
+    await hass.services.async_call(DOMAIN, "charge", {"duration": 60}, blocking=True)
+    resume.side_effect = PowerwallError("Offline")
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    resume.assert_awaited_once()
+    resume.side_effect = None
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    controller = entry.runtime_data.controller
+    if task := controller._recovery_task:
+        await asyncio.wait_for(task, 1)
+    await hass.async_block_till_done()
+    state = hass.states.get("sensor.powerwall_force_dispatch_status")
+    assert state.state == "idle"
+    assert state.attributes["restore_status"] == "confirmed"
+    assert resume.await_count == 2
+    dispatch.assert_awaited_once()
 
 
 @pytest.mark.parametrize(
