@@ -137,6 +137,12 @@ verified for the same private key used locally.
 
 ## Install and configure
 
+For HACS, open **Custom repositories** from the HACS menu. Add
+`https://github.com/HarrisonC/powerwall-force-ha` as an **Integration**, download
+the latest release of **Powerwall Force**, and restart Home Assistant.
+
+For manual installation, follow these steps.
+
 1. Copy `custom_components/powerwall_force` into
    `/config/custom_components/powerwall_force` on Home Assistant, then restart it.
    Alternatively, extract the release ZIP into `/config`; it contains that layout.

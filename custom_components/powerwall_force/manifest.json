@@ -1,13 +1,14 @@
 {
   "domain": "powerwall_force",
   "name": "Powerwall Force",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "config_flow": true,
   "dependencies": ["application_credentials"],
-  "documentation": "https://github.com/jasonacox/pypowerwall#lan-control-v1r",
+  "documentation": "https://github.com/HarrisonC/powerwall-force-ha",
+  "issue_tracker": "https://github.com/HarrisonC/powerwall-force-ha/issues",
   "integration_type": "device",
   "iot_class": "local_polling",
   "requirements": [],
-  "codeowners": []
+  "codeowners": ["@HarrisonC"]
 }
 

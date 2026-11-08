@@ -6,9 +6,8 @@ import pytest
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
-from homeassistant.helpers.config_validation import custom_serializer
+from homeassistant.helpers.data_entry_flow import FlowManagerResourceView
 from homeassistant.setup import async_setup_component
-from voluptuous_serialize import convert
 
 from custom_components.powerwall_force import DISPATCH_SCHEMA, async_setup
 from custom_components.powerwall_force.const import DOMAIN
@@ -62,7 +61,8 @@ async def test_config_flow_validates_read_only(hass, rsa_key):
             result["flow_id"], {"next_step_id": "existing_key"}
         )
         assert result["type"] == "form"
-        assert len(convert(result["data_schema"], custom_serializer=custom_serializer)) == 5
+        view = FlowManagerResourceView(hass.config_entries.flow)
+        assert len(view._prepare_result_json(result)["data_schema"]) == 5
         result = await hass.config_entries.flow.async_configure(result["flow_id"], DATA)
         await hass.async_block_till_done()
         assert result["type"] == "create_entry"

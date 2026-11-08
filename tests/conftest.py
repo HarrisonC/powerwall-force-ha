@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from aiohttp.resolver import ThreadedResolver
 from cryptography.hazmat.primitives.asymmetric import rsa
+from homeassistant import auth, loader
 
 
 @pytest.fixture
@@ -62,7 +63,6 @@ def rsa_key():
 
 @pytest.fixture
 async def hass(tmp_path):
-    from homeassistant import auth, loader
     from homeassistant.config_entries import ConfigEntries
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers import area_registry, device_registry, entity_registry
@@ -73,6 +73,8 @@ async def hass(tmp_path):
     )
     loader.async_setup(instance)
     instance.config_entries = ConfigEntries(instance, {})
+    if hasattr(device_registry, "async_setup"):
+        device_registry.async_setup(instance)
     await asyncio.gather(
         area_registry.async_load(instance),
         device_registry.async_load(instance),
