@@ -11,7 +11,7 @@ configured operating mode when the session ends.
 The runtime uses only Home Assistant's existing `aiohttp` and `cryptography`
 packages. There is no add-on, proxy, MQTT broker, cloud polling, protobuf runtime,
 or additional pip requirement. All live readings share one local query every
-2 seconds by default. Three manual buttons, three manual settings and command status
+10 seconds by default. Three manual buttons, three manual settings and command status
 remain event-driven.
 
 **Status: experimental.** The user confirmed version 0.3.0's local charge,
@@ -220,7 +220,7 @@ Version **0.4.0** adds the following through the **existing RSA connection**:
 | Grid export power | Positive export W, or zero when importing |
 | Grid connected | On/off from physical contactor and grid/microgrid health readback |
 
-One signed, read-only status query updates all these entities every **2 seconds**
+One signed, read-only status query updates all these entities every **10 seconds**
 by default; the interval is configurable.
 It uses the same address, private key and DIN as dispatch, with no additional
 password or cloud authorization. Existing-key imports retain their existing
@@ -249,8 +249,10 @@ does not change the duration, wattage or configured maximum of a session.
 
 In **Settings → Devices & services → Powerwall Force**, select **Configure**.
 Set **Polling interval (seconds)** to a whole number from **1 to 300** and submit.
-The default is **2 seconds**, including existing entries upgraded to v0.5.0 that
-have no saved interval. The option is stored per gateway and survives restarts.
+The default is **10 seconds**, including existing entries that have no saved
+interval. Explicitly saved intervals are retained on upgrade; if an existing
+entry has a saved 2-second interval, change it to 10 seconds here. The option is
+stored per gateway and survives restarts.
 
 Changes apply to the running telemetry coordinator without reloading the
 integration or interrupting an active charge/discharge. Saved manual button
@@ -361,7 +363,7 @@ Telemetry tests check the exact upstream signed query and independent generated
 schema, RSA-only LAN requests, units and directions, missing/invalid/zero values,
 grid contactor state, native entity grouping, read failure and recovery, polling
 cleanup, and command preemption of slow reads.
-Polling-option tests cover the 2-second upgrade default, validation, persistence,
+Polling-option tests cover the 10-second upgrade default, validation, persistence,
 live interval changes during charging, preserved manual settings, and sample age
 at slower polling intervals.
 Development dependencies are not shipped in the integration ZIP.

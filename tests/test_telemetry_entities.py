@@ -124,7 +124,7 @@ async def test_polls_share_one_read_and_stop_without_listeners(hass, telemetry_p
     coordinator = TelemetryCoordinator(hass, None, client)
     remove = coordinator.async_add_listener(lambda: None)
     try:
-        assert coordinator.update_interval == timedelta(seconds=2)
+        assert coordinator.update_interval == timedelta(seconds=10)
         assert coordinator._unsub_refresh is not None
         # Exercise the scheduled callback deterministically, without a wall-clock wait.
         coordinator._async_unsub_refresh()

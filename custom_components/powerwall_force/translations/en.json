@@ -9,7 +9,7 @@
           "poll_interval_seconds": "Polling interval (seconds)"
         },
         "data_description": {
-          "poll_interval_seconds": "Default: 2 seconds. Enter a whole number from 1 to 300. All readings share one request per update."
+          "poll_interval_seconds": "Default: 10 seconds. Enter a whole number from 1 to 300. All readings share one request per update."
         }
       }
     },

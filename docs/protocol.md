@@ -122,7 +122,7 @@ query number 2, the signed text, code and empty variables object. Response JSON
 is read from inner envelope field 16/2/2, after the usual message-fault and
 common-error checks. No raw/native JSON API is polled and no new login is added.
 
-One Home Assistant DataUpdateCoordinator refreshes every 2 seconds by default and shares
+One Home Assistant DataUpdateCoordinator refreshes every 10 seconds by default and shares
 the response among all enabled telemetry entities. With no listeners it stops
 scheduled polling. Core readings are site, battery, solar and load real power,
 remaining/full-pack energy and physical grid connection readback. Grid import
@@ -155,9 +155,10 @@ The runtime ships neither test schemas nor generated protobuf modules.
 
 The Configure options flow stores `poll_interval_seconds` alongside the existing
 manual button preferences, retaining those preferences on save. Whole seconds
-from 1 to 300 are accepted. Entries with no saved interval use 2 seconds, so the
-default also applies when upgrading from v0.4.0. Invalid stored interval values
-fall back to that default.
+from 1 to 300 are accepted. Entries with no saved interval use 10 seconds, so the
+default also applies on upgrade. Explicitly saved intervals are retained;
+entries with a saved 2-second interval must be changed through Configure to use
+10 seconds. Invalid stored interval values fall back to that default.
 
 An options update listener changes the running coordinator's interval and asks
 Home Assistant to refresh/reschedule it. There is no config-entry reload and no
