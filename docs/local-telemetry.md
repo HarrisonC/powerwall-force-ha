@@ -8,8 +8,8 @@ has not been added to that version.
 Implementation follow-up: v0.4.0 adds the core status-query readings described
 below, using the existing paired connection. Optional component diagnostics
 and native cumulative counters remain research for subsequent versions.
-Version 0.5.0 makes the core-read interval configurable from 1 to 300 seconds,
-with a 2-second default.
+Version 0.5.0 made the core-read interval configurable from 1 to 300 seconds.
+The current default is 10 seconds; explicitly saved intervals are retained.
 
 ## What the repositories establish
 

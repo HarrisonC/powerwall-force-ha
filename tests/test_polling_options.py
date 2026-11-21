@@ -20,10 +20,10 @@ from custom_components.powerwall_force.polling import (
 
 
 @pytest.mark.parametrize("value", [0, -1, 301, 1.5, True, None, "x", float("nan"), float("inf")])
-def test_invalid_interval_rejected_and_stored_corruption_defaults_to_two(value):
+def test_invalid_interval_rejected_and_stored_corruption_defaults_to_ten(value):
     with pytest.raises(vol.Invalid):
         validate_poll_interval(value)
-    assert poll_interval_seconds({CONF_POLL_INTERVAL: value}) == 2
+    assert poll_interval_seconds({CONF_POLL_INTERVAL: value}) == 10
 
 
 @pytest.mark.parametrize("value,expected", [(1, 1), (2.0, 2), (300, 300), ("15", 15)])
@@ -34,7 +34,7 @@ def test_whole_second_intervals(value, expected):
 async def test_configure_saves_and_applies_interval_without_stopping_charge(hass, loaded):
     entry, dispatch, resume = loaded
     runtime = entry.runtime_data
-    assert runtime.telemetry.update_interval == timedelta(seconds=2)
+    assert runtime.telemetry.update_interval == timedelta(seconds=10)
     preferences = {
         CONF_MANUAL_DURATION: 15,
         CONF_MANUAL_CHARGE_POWER: 2500,
@@ -51,7 +51,7 @@ async def test_configure_saves_and_applies_interval_without_stopping_charge(hass
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] == "form"
     assert result["step_id"] == "init"
-    assert result["data_schema"]({})[CONF_POLL_INTERVAL] == 2
+    assert result["data_schema"]({})[CONF_POLL_INTERVAL] == 10
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {CONF_POLL_INTERVAL: 15}
     )
@@ -116,7 +116,7 @@ async def test_fractional_interval_form_error_does_not_save_options(hass, loaded
     assert result["type"] == "form"
     assert result["errors"] == {CONF_POLL_INTERVAL: "invalid_poll_interval"}
     assert entry.options == previous
-    assert entry.runtime_data.telemetry.update_interval == timedelta(seconds=2)
+    assert entry.runtime_data.telemetry.update_interval == timedelta(seconds=10)
     hass.config_entries.options.async_abort(result["flow_id"])
 
 
